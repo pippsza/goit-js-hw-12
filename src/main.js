@@ -17,11 +17,16 @@ const lightbox = new SimpleLightbox('.js-gallery a', {
   captionsData: 'alt',
   captionDelay: 250,
 });
+const loadMoreBtnEl = document.querySelector('.js-load-more-btn');
+
+const lightBoxRefresh = () => {};
 
 const onSearchFormSubmit = async event => {
   try {
     event.preventDefault();
+    loadMoreBtnEl.classList.add('is-hidden');
     galleryEl.innerHTML = createWaitingCardTemplate();
+    page = 1;
 
     searchedQuery = event.currentTarget.elements.user_query.value.trim();
 
@@ -36,8 +41,9 @@ const onSearchFormSubmit = async event => {
       searchFormEl.reset();
       return;
     }
+
     const data = await fetchPhotosByQuery(searchedQuery, page);
-    console.log('API Response:', data);
+
     if (data.total === 0) {
       galleryEl.innerHTML = '';
       searchFormEl.reset();
@@ -51,6 +57,13 @@ const onSearchFormSubmit = async event => {
       return;
     }
 
+    loadMoreBtnEl.classList.add('is-hidden');
+    const total_pages = Math.round(data.totalHits / 15);
+    if (total_pages > 1) {
+      loadMoreBtnEl.classList.remove('is-hidden');
+
+      loadMoreBtnEl.addEventListener('click', onLoadMoreBtnClick);
+    }
     const galleryTemplate = data.hits
       .map(el => createGalleryCardTemplate(el))
       .join('');
@@ -69,3 +82,39 @@ const onSearchFormSubmit = async event => {
 };
 
 searchFormEl.addEventListener('submit', onSearchFormSubmit);
+
+const onLoadMoreBtnClick = async event => {
+  try {
+    page++;
+    galleryEl.insertAdjacentHTML('beforeend', createWaitingCardTemplate());
+
+    const data = await fetchPhotosByQuery(searchedQuery, page);
+    const total_pages = Math.round(data.totalHits / 15);
+    const paragraphs = document.querySelectorAll('p');
+    if (paragraphs.length > 0) {
+      const lastParagraph = paragraphs[paragraphs.length - 1];
+      lastParagraph.remove();
+    }
+    const galleryTemplate = data.hits
+      .map(el => createGalleryCardTemplate(el))
+      .join('');
+
+    galleryEl.insertAdjacentHTML('beforeend', galleryTemplate);
+    lightbox.refresh();
+
+    const cards = galleryEl.querySelectorAll('li');
+    const cardHeight = cards[0].getBoundingClientRect().height;
+    window.scrollBy({
+      top: cardHeight * 2,
+      behavior: 'smooth',
+    });
+
+    if (page === total_pages) {
+      loadMoreBtnEl.classList.add('is-hidden');
+
+      loadMoreBtnEl.removeEventListener('click', onLoadMoreBtnClick);
+    }
+  } catch (err) {
+    console.log(err);
+  }
+};

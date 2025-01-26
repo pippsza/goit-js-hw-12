@@ -73,3 +73,13 @@ h5,
 h6 {
   margin: 0;
 }
+.load-more-btn {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 40px;
+}
+
+.load-more-btn.is-hidden {
+  display: none;
+}
